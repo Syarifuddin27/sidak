@@ -1,0 +1,440 @@
+<?php
+
+namespace App\Http\Controllers;
+use Auth;
+use App\User;
+use App\Pendidikan;
+use App\Nonpendidikan;
+use App\Pengalaman;
+use App\Jabatan;
+use App\Doc;
+use App\Karyawan;
+use App\Category;
+use App\Verifi;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Yajra\DataTables\DataTables;
+use File;
+use PDF;
+use App\Absensi;
+use App\Pkwt;
+use App\Sp;
+use App\Kecelakaan;
+
+
+class KaryawanController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        $s = $request->input('s');
+        $karyawan = Karyawan::latest()
+            ->search($s)
+            ->paginate(20);
+
+        return view('karyawans.index', compact('karyawan', 's'))
+            ->with('i', (request()->input('page', 1) - 1) * 5)
+            ->with('docs', Doc::all())
+            ->with('pendidikans', Pendidikan::all())
+            ;
+    }
+
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        $karyawan = Karyawan::all();
+        $categories = Category::all();
+        $docs = Doc::all();
+        $pendidikans = Pendidikan::all();
+        $nonpendidikans = Nonpendidikan::all();
+        $pengalamans = Pengalaman::all();
+        $jabatans = Jabatan::all();
+        $verifis = Verifi::all();
+
+        // if ($categories->count() == 0 || $docs->count() == 0) {
+
+        //     return redirect()->back();
+
+        // }
+
+        return view('karyawans.create')->with('categories', $categories)
+                                       ->with('docs', $docs)
+                                       ->with('pendidikans', $pendidikans)
+                                       ->with('nonpendidikans', $nonpendidikans)
+                                       ->with('pengalamans', $pengalamans)
+                                       ->with('jabatans', $jabatans)
+                                       ->with('verifis', $verifis)
+                                       ;
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $this->validate($request, [
+            // 'image' => 'required | mimes:jpeg,jpg,png | max:1000',
+            'tgl_melamar' => 'required',
+            'category_id' => 'required',
+            'kategori' => 'required',
+            'noktp' => 'required',
+            'nama' => 'required',
+            'umur' => 'required',
+            'jenis_kelamin' => 'required',
+            'agama' => 'required',
+            'tempat_lahir' => 'required',
+            'tgl_lahir' => 'required',
+            'warganegara' => 'required',
+            'status' => 'required',
+            'provinsi' => 'required',
+            'kabupaten' => 'required',
+            'kecamatan' => 'required',
+            'desa' => 'required',
+            'alamat_lengkap' => 'required',
+            'nama_ibu' => 'required',
+            'nokk' => 'required',
+            'nohp' => 'required',
+            'dapat_bekerja' => 'required',
+            'pendidikan' => 'required',
+            'nama_sekolah' => 'required',
+            'kota_formal' => 'required',
+            'jurusan' => 'required',
+            'mulai' => 'required',
+            'lulus' => 'required',
+            'pendidikan' => 'required',
+            'nama_sekolah' => 'required',
+            'kota_formal' => 'required',
+            'mulai' => 'required',
+            'lulus' => 'required',
+
+        ]);
+
+        $karyawan = new Karyawan;
+        $pendidikan = new Pendidikan;
+        $nonpendidikan = new Nonpendidikan;
+        $pengalaman = new Pengalaman;
+        $verifi = new Verifi;
+
+        $karyawan_image = $request->image;
+        $karyawan_image_new_name = time() . $karyawan_image->getClientOriginalName();
+        $karyawan_image->move('uploads/karyawans', $karyawan_image_new_name);
+
+        $karyawan->image = 'uploads/karyawans/' . $karyawan_image_new_name;
+        $karyawan->tgl_melamar = $request->tgl_melamar;
+        $karyawan->kategori = $request->kategori;
+        $karyawan->noktp = $request->noktp;
+        $karyawan->nama = $request->nama;
+        $karyawan->umur = $request->umur;
+        $karyawan->category_id = $request->category_id;
+        $karyawan->jabatan_id = $request->jabatan_id;
+        $karyawan->jenis_kelamin = $request->jenis_kelamin;
+        $karyawan->agama = $request->agama;
+        $karyawan->tempat_lahir = $request->tempat_lahir;
+        $karyawan->tgl_lahir = $request->tgl_lahir;
+        $karyawan->warganegara = $request->warganegara;
+        $karyawan->status = $request->status;
+        $karyawan->provinsi = $request->provinsi;
+        $karyawan->kabupaten = $request->kabupaten;
+        $karyawan->kecamatan = $request->kecamatan;
+        $karyawan->desa = $request->desa;
+        $karyawan->alamat_lengkap = $request->alamat_lengkap;
+        $karyawan->alamat_kos = $request->alamat_kos;
+        $karyawan->nama_ibu = $request->nama_ibu;
+        $karyawan->nokk = $request->nokk;
+        $karyawan->jumlah_anak = $request->jumlah_anak;
+        $karyawan->nohp = $request->nohp;
+        $karyawan->berat_badan = $request->berat_badan;
+        $karyawan->tinggi_badan = $request->tinggi_badan;
+        $karyawan->nama_wali = $request->nama_wali;
+        $karyawan->alamat_wali = $request->alamat_wali;
+        $karyawan->nohp_wali = $request->nohp_wali;
+        $karyawan->dapat_bekerja = $request->dapat_bekerja;
+        $karyawan->slug = str_slug($request->nama);
+        $karyawan->user_id = Auth::id();
+        if ($karyawan->save())
+        {
+            $pendidikan->karyawan_id = $karyawan->id;
+            $pendidikan->pendidikan = $request->pendidikan;
+            $pendidikan->nama_sekolah = $request->nama_sekolah;
+            $pendidikan->kota_formal = $request->kota_formal;
+            $pendidikan->jurusan = $request->jurusan;
+            $pendidikan->mulai = $request->mulai;
+            $pendidikan->lulus = $request->lulus;
+            if ($pendidikan->save())
+            {
+                $nonpendidikan->karyawan_id = $karyawan->id;
+                $nonpendidikan->jenis_pendidikan = $request->jenis_pendidikan;
+                $nonpendidikan->lembaga = $request->lembaga;
+                $nonpendidikan->kota = $request->kota;
+                $nonpendidikan->tahun = $request->tahun;
+                $nonpendidikan->durasi = $request->durasi;
+                if ($nonpendidikan->save()) {
+                    $pengalaman->karyawan_id = $karyawan->id;
+                    $pengalaman->nama_perusahaan = $request->nama_perusahaan;
+                    $pengalaman->alamat_perusahaan = $request->alamat_perusahaan;
+                    $pengalaman->bidang_usaha = $request->bidang_usaha;
+                    $pengalaman->jabatan = $request->jabatan;
+                    $pengalaman->gaji = $request->gaji;
+                    $pengalaman->mulai_kerja = $request->mulai_kerja;
+                    $pengalaman->akhir_kerja = $request->akhir_kerja;
+                    $pengalaman->alasan = $request->alasan;
+                    $pengalaman->save();
+                }
+            }
+        }
+        $karyawan->docs()->attach($request->docs);
+
+        // $pendidikans = new Pendidikan;
+        // $pendidikans->pendidikan = $request->pendidikan;
+        // $pendidikans->nama_sekolah = $request->nama_sekolah;
+
+        // $karyawan->pendidikans->save($pendidikans);
+
+        return redirect('admin/karyawan');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Karyawan  $karyawan
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Karyawan $karyawan)
+    {
+        // $absensi = Absensi::with('absensi')->orderBy('created_at', 'asc')->get();
+        // $items = Item::join('users AS u', 'i.user_id', '=', 'u.id')
+        //       ->where('account_id', '=', 5)
+        //       ->all();
+              
+        // $karyawan = Karyawan::join('absensis AS a', 'karyawans.id', '=', 'a.karyawan_id')
+        //         ->where('karyawans.id', '=', 1)
+        //         ->get();
+
+        // return view('karyawans.show', compact('karyawan', $karyawan));
+
+        $absensi = Absensi::join('karyawans', 'absensis.karyawan_id', '=', 'karyawans.id') 
+                   ->where('karyawans.id', '=', 1)       
+                ->get();
+               
+
+        return view('karyawans.show', compact('absensi', $absensi));
+
+
+
+
+        // return view('karyawans.show', compact('karyawan', $karyawan))
+        //         ->with('absensi', Absensi::all());
+                // ->with('absensi', Absensi::orderBy('created_at', 'asc')->get());
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Karyawan  $karyawan
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Karyawan $karyawan)
+    {
+        return view('karyawans.edit', compact('karyawan'))
+            ->with('categories', Category::all())
+            ->with('docs', Doc::all())
+            ->with('pendidikan', Pendidikan::orderBy('karyawan_id'))
+            ->with('nonpendidikan', Nonpendidikan::all())
+            ->with('jabatans', Jabatan::all())
+            ->with('verifi', Verifi::all())
+            ;
+    }
+
+
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Karyawan  $karyawan
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        // $karyawan = Karyawan::update($request->all());
+        // $karyawan->pendidikan()->update($request->all());
+        // $karyawan->nonpendidikan()->update($request->all());
+        // $karyawan->pengalaman()->update($request->all());
+
+        $this->validate($request, [
+            'nama' => 'required',
+        ]);
+        $karyawan = Karyawan::find($id);
+        if ($request->hasFile('image'))
+        {
+            $image = $request->image;
+            $image_new_name = time() . $image->getClientOriginalName();
+            $image->move('uploads/karyawans', $image_new_name);
+
+            $karyawan->image = 'uploads/karyawans/'. $image_new_name;
+        }
+        $karyawan->nama = $request->nama;
+        $karyawan->noktp = $request->noktp;
+        $karyawan->tgl_melamar = $request->tgl_melamar;
+        $karyawan->kategori = $request->kategori;
+        $karyawan->noktp = $request->noktp;
+        $karyawan->nama = $request->nama;
+        $karyawan->umur = $request->umur;
+        $karyawan->category_id = $request->category_id;
+        $karyawan->jabatan_id = $request->jabatan_id;
+        $karyawan->jenis_kelamin = $request->jenis_kelamin;
+        $karyawan->agama = $request->agama;
+        $karyawan->tempat_lahir = $request->tempat_lahir;
+        $karyawan->tgl_lahir = $request->tgl_lahir;
+        $karyawan->warganegara = $request->warganegara;
+        $karyawan->status = $request->status;
+        $karyawan->provinsi = $request->provinsi;
+        $karyawan->kabupaten = $request->kabupaten;
+        $karyawan->kecamatan = $request->kecamatan;
+        $karyawan->desa = $request->desa;
+        $karyawan->alamat_lengkap = $request->alamat_lengkap;
+        $karyawan->alamat_kos = $request->alamat_kos;
+        $karyawan->nama_ibu = $request->nama_ibu;
+        $karyawan->nokk = $request->nokk;
+        $karyawan->jumlah_anak = $request->jumlah_anak;
+        $karyawan->nohp = $request->nohp;
+        $karyawan->berat_badan = $request->berat_badan;
+        $karyawan->tinggi_badan = $request->tinggi_badan;
+        $karyawan->nama_wali = $request->nama_wali;
+        $karyawan->alamat_wali = $request->alamat_wali;
+        $karyawan->nohp_wali = $request->nohp_wali;
+        $karyawan->dapat_bekerja = $request->dapat_bekerja;
+        $karyawan->slug = str_slug($request->nama);
+
+        if ($request->verifi == '0') {
+            $karyawan->verifi = 0;
+        } else{
+            $karyawan->verifi = 1;
+            $karyawan->user_verifi = Auth::id();
+        }
+
+            $karyawan->pendidikan->pendidikan = $request->pendidikan;
+            $karyawan->pendidikan->nama_sekolah = $request->nama_sekolah;
+            $karyawan->pendidikan->kota_formal = $request->kota_formal;
+            $karyawan->pendidikan->jurusan = $request->jurusan;
+            $karyawan->pendidikan->mulai = $request->mulai;
+            $karyawan->pendidikan->lulus = $request->lulus;
+
+                $karyawan->nonpendidikan->jenis_pendidikan = $request->jenis_pendidikan;
+                $karyawan->nonpendidikan->lembaga = $request->lembaga;
+                $karyawan->nonpendidikan->kota = $request->kota;
+                $karyawan->nonpendidikan->tahun = $request->tahun;
+                $karyawan->nonpendidikan->durasi = $request->durasi;
+
+                    $karyawan->pengalaman->nama_perusahaan = $request->nama_perusahaan;
+                    $karyawan->pengalaman->alamat_perusahaan = $request->alamat_perusahaan;
+                    $karyawan->pengalaman->bidang_usaha = $request->bidang_usaha;
+                    $karyawan->pengalaman->jabatan = $request->jabatan;
+                    $karyawan->pengalaman->gaji = $request->gaji;
+                    $karyawan->pengalaman->mulai_kerja = $request->mulai_kerja;
+                    $karyawan->pengalaman->akhir_kerja = $request->akhir_kerja;
+                    $karyawan->pengalaman->alasan = $request->alasan;
+
+                    // if (!empty($request->verifi)) {
+                    //     $karyawan->verifi = $request->verisi;
+                    //     $verifi = Verifi::create([
+                    //         'karyawan_id' => $karyawan->id,
+                    //         'user_id' => Auth::id()
+                    //     ]);
+                    // }
+
+        $karyawan->docs()->sync($request->docs);
+        $karyawan->save();
+        $karyawan->pendidikan->save();
+        $karyawan->nonpendidikan->save();
+        $karyawan->pengalaman->save();
+// dd($karyawan);
+        return redirect('/admin/karyawan');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Karyawan  $karyawan
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        Post::destroy($id);
+
+        return redirect('/karyawan');
+    }
+    public function apiKaryawan()
+    {
+        $user = User::all();
+        $karyawan = Karyawan::all();
+        $categories = Category::all();
+        $docs = Doc::all();
+        $pendidikans = Pendidikan::all();
+        $nonpendidikans = Nonpendidikan::all();
+        $pengalamans = Pengalaman::all();
+        $jabatans = Jabatan::all();
+
+        return Datatables::of($karyawan, $user)
+        // ->editColumn('user_id', '{!! str_limit($user, 60) !!}')
+        ->addColumn('action', function($karyawan){
+            return '<a href="#" class="btn btn-info btn-xs">
+                        <i class="fa fa-eye"></i>
+                        Show
+                    </a>'.
+                    '<a onclick="editForm('. $karyawan->id . ')" class="btn btn-primary btn-xs">
+                        <i class="fa fa-pencil"></i>
+                        Edit
+                    </a>'.
+                    '<a onclick="deleteData('. $karyawan->id . ')" class="btn btn-danger btn-xs">
+                        <i class="fa fa-trash-o"></i>
+                        Delete
+                    </a>';
+        })->make(true);
+    }
+    public function verifiKaryawan(Request $request, Karyawan $karyawan)
+    {
+        $karyawan = Karyawan::find($id);
+        if ($karyawan->verifi == 1) {
+            $karyawan->verifi = 0;
+        } else {
+            $karyawan->verifi = 1;
+        }
+        $karyawan->verifi_id = Auth::id;
+        $karyawan->save();
+        return view()->back();
+    }
+
+    public function pDf()
+    {
+        $karyawan = Karyawan::latest()->paginate(10);
+
+        $pdf = PDF::loadView('pdf.index', compact('karyawan'));
+        return $pdf->stream('document.pdf');
+        // $dompdf->set_option('isHtml5ParserEnabled', true);
+    }
+}
+
+agama
+
+@foreach ($absensi as $absen)
+                                                {{ $absen->karyawan->nama }}
+                                                <br>
+                                                    {{ $absen->sebab }}
+                                                    <br>
+                                                    {{ $absen->keterangan }} 
+                                                    <br>
+                                            @endforeach
+
